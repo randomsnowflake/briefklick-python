@@ -37,9 +37,9 @@ def test_recipient_includes_address_line2_and_extras() -> None:
     assert lines == [
         "Acme AG",
         "Abt. Buchhaltung",
+        "z.Hd. Frau Schmidt",
         "Musterweg 1",
         "12345 Köln",
-        "z.Hd. Frau Schmidt",
     ]
 
 
@@ -63,3 +63,22 @@ def test_recipient_from_lines_roundtrip() -> None:
     )
     assert "34533 Berlin" in r.format()
     assert "c/o Hans" in r.format()
+
+
+def test_recipient_from_lines_preserves_multiple_prefix_lines() -> None:
+    r = Recipient.from_lines(
+        "Acme AG",
+        ["Abt. Buchhaltung", "z.Hd. Frau Schmidt", "Musterweg 1", "12345 Köln"],
+    )
+    assert r.format().splitlines() == [
+        "Acme AG",
+        "Abt. Buchhaltung",
+        "z.Hd. Frau Schmidt",
+        "Musterweg 1",
+        "12345 Köln",
+    ]
+
+
+def test_recipient_from_lines_requires_postal_code_and_city() -> None:
+    with pytest.raises(ValueError):
+        Recipient.from_lines("Acme AG", ["Musterweg 1", "Berlin"])

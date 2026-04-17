@@ -26,9 +26,11 @@ from __future__ import annotations
 import base64
 import logging
 import os
+from collections.abc import Mapping
 from datetime import datetime
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import IO, Any, Mapping
+from typing import IO, Any
 
 import requests
 from dotenv import load_dotenv
@@ -61,6 +63,11 @@ DEFAULT_BASE_URL = "https://api.briefklick.de/v2"
 DEFAULT_TIMEOUT: tuple[float, float] = (10.0, 60.0)  # (connect, read)
 MAX_PDF_BYTES = 20 * 1024 * 1024  # 20 MB per API docs
 MAX_PAGES = 90
+try:
+    PACKAGE_VERSION = version("briefklick")
+except PackageNotFoundError:
+    PACKAGE_VERSION = "0.1.0"
+DEFAULT_USER_AGENT = f"briefklick-python/{PACKAGE_VERSION}"
 
 
 class BriefKlickClient:
@@ -89,7 +96,7 @@ class BriefKlickClient:
         base_url: str = DEFAULT_BASE_URL,
         timeout: tuple[float, float] | float = DEFAULT_TIMEOUT,
         session: requests.Session | None = None,
-        user_agent: str = "briefklick-python/0.1",
+        user_agent: str = DEFAULT_USER_AGENT,
     ) -> None:
         if not api_key or not api_key.strip():
             raise ConfigurationError("api_key must be a non-empty string.")
@@ -158,7 +165,13 @@ class BriefKlickClient:
         files: Mapping[str, Any] | None = None,
     ) -> Any:
         url = f"{self.base_url}{endpoint}"
-        logger.debug("BriefKlick %s %s data=%s files=%s", method, endpoint, data, bool(files))
+        logger.debug(
+            "BriefKlick %s %s data_keys=%s file_keys=%s",
+            method,
+            endpoint,
+            sorted(data) if data else [],
+            sorted(files) if files else [],
+        )
         try:
             response = self._session.request(
                 method,
@@ -223,24 +236,35 @@ class BriefKlickClient:
             endpoint=endpoint,
         )
 
+    @staticmethod
+    def _expect_mapping(payload: Any, *, endpoint: str) -> Mapping[str, Any]:
+        if not isinstance(payload, Mapping):
+            raise APIError(
+                f"Unexpected {endpoint} response: expected object, got {type(payload).__name__}.",
+                status_code=200,
+                payload=payload,
+                endpoint=endpoint,
+            )
+        return payload
+
     # --------------------------------------------------------------- endpoints
 
     def get_balance(self) -> int:
         """Return the current account balance in Eurocents."""
-        data = self._request("GET", "/balance")
-        return int(data["balance"])
+        data = self._expect_mapping(self._request("GET", "/balance"), endpoint="/balance")
+        try:
+            return int(data["balance"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise APIError(
+                f"Unexpected /balance response: {data!r}",
+                status_code=200,
+                payload=data,
+                endpoint="/balance",
+            ) from exc
 
     def get_pricing(self) -> dict[str, Any]:
         """Return the raw pricing table (values in Eurocents)."""
-        data = self._request("GET", "/pricing")
-        if not isinstance(data, dict):
-            raise APIError(
-                f"Unexpected /pricing response: {data!r}",
-                status_code=200,
-                payload=data,
-                endpoint="/pricing",
-            )
-        return data
+        return dict(self._expect_mapping(self._request("GET", "/pricing"), endpoint="/pricing"))
 
     def get_countries(self) -> Any:
         """Return the list of supported destination countries."""
@@ -296,12 +320,23 @@ class BriefKlickClient:
             else:
                 form["html"] = html
 
-            data = self._request("POST", "/create", data=form, files=files)
+            data = self._expect_mapping(
+                self._request("POST", "/create", data=form, files=files),
+                endpoint="/create",
+            )
         finally:
             if opened_file is not None:
                 opened_file.close()
 
-        doc = Document(id=str(data["id"]), pages=int(data["pages"]))
+        try:
+            doc = Document(id=str(data["id"]), pages=int(data["pages"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise APIError(
+                f"Unexpected /create response: {data!r}",
+                status_code=200,
+                payload=data,
+                endpoint="/create",
+            ) from exc
         if doc.pages > MAX_PAGES:
             logger.warning(
                 "Document %s has %d pages (BriefKlick max is %d).",
@@ -311,11 +346,21 @@ class BriefKlickClient:
 
     def preview(self, document_id: str) -> Preview:
         """Return a preview PDF for the given document id."""
-        data = self._request("POST", "/preview", data={"id": document_id})
-        return Preview(
-            pdf_bytes=base64.b64decode(data["file"]),
-            pages=int(data["pages"]),
+        data = self._expect_mapping(
+            self._request("POST", "/preview", data={"id": document_id}),
+            endpoint="/preview",
         )
+        try:
+            pdf_bytes = base64.b64decode(data["file"], validate=True)
+            pages = int(data["pages"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise APIError(
+                f"Unexpected /preview response: {data!r}",
+                status_code=200,
+                payload=data,
+                endpoint="/preview",
+            ) from exc
+        return Preview(pdf_bytes=pdf_bytes, pages=pages)
 
     def send(
         self,
@@ -330,13 +375,36 @@ class BriefKlickClient:
             "einschreiben": int(einschreiben),
             "farbig": int(color),
         }
-        data = self._request("POST", "/send", data=form)
-        return Order(id=int(data["id"]), price_cents=int(data["price"]))
+        data = self._expect_mapping(self._request("POST", "/send", data=form), endpoint="/send")
+        try:
+            return Order(id=int(data["id"]), price_cents=int(data["price"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise APIError(
+                f"Unexpected /send response: {data!r}",
+                status_code=200,
+                payload=data,
+                endpoint="/send",
+            ) from exc
 
     def get_status(self, order_id: int) -> Status:
         """Look up status for a previously sent order."""
-        data = self._request("POST", "/status", data={"id": int(order_id)})
-        raw_status = int(data.get("status", 0))
+        data = self._expect_mapping(self._request("POST", "/status", data={"id": int(order_id)}), endpoint="/status")
+        try:
+            raw_status = int(data.get("status", 0))
+        except (TypeError, ValueError) as exc:
+            raise APIError(
+                f"Unexpected /status response: {data!r}",
+                status_code=200,
+                payload=data,
+                endpoint="/status",
+            ) from exc
+        if raw_status not in OrderStatus._value2member_map_:
+            raise APIError(
+                f"Unexpected /status response: unknown status code {raw_status}.",
+                status_code=200,
+                payload=data,
+                endpoint="/status",
+            )
         created_raw = data.get("created")
         created_dt: datetime | None = None
         if created_raw:
@@ -346,7 +414,7 @@ class BriefKlickClient:
                 created_dt = None
         tracking = data.get("tracking") or None
         return Status(
-            status=OrderStatus(raw_status) if raw_status in OrderStatus._value2member_map_ else OrderStatus(0),
+            status=OrderStatus(raw_status),
             tracking=tracking,
             created=created_dt,
             raw=dict(data) if isinstance(data, dict) else {},

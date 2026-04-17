@@ -139,3 +139,11 @@ BriefKlickError
 
 Every `APIError` exposes `.status_code`, `.payload`, and `.endpoint` so you
 can log structured error reports.
+
+Successful responses are also validated. If BriefKlick returns a malformed
+`200 OK` payload, the client raises `APIError` instead of leaking low-level
+`KeyError` / `TypeError` exceptions.
+
+`send()` / `send_letter()` are chargeable and the API exposes no idempotency
+key. Treat `ServerError` / `TimeoutError_` from send operations as ambiguous:
+do not blindly retry unless you are willing to risk duplicate letters.

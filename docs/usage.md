@@ -66,18 +66,27 @@ with BriefKlickClient.from_env() as c:
 ## 3. Send HTML (no PDF dependency)
 
 ```python
+from briefklick import BriefKlickClient, Recipient
+
 html = """
 <h1>Mahnung</h1>
 <p>Sehr geehrter Herr Maier,</p>
 <p>ausstehend: 199,99 €</p>
 """
 
-doc = c.create_document(
-    sender="Acme GmbH · Musterweg 1 · 10115 Berlin",
-    recipient=recipient,
-    html=html,
-)
-order = c.send(doc.id)
+with BriefKlickClient.from_env() as c:
+    recipient = Recipient(
+        name="Peter Maier",
+        street="Bergstraße 88",
+        postal_code="34533",
+        city="Berlin",
+    )
+    doc = c.create_document(
+        sender="Acme GmbH · Musterweg 1 · 10115 Berlin",
+        recipient=recipient,
+        html=html,
+    )
+    order = c.send(doc.id)
 ```
 
 ## 4. Track an order
@@ -97,22 +106,21 @@ print("Balance €:", client.get_balance() / 100)
 print("Prices:", client.get_pricing())
 ```
 
-## 6. Handling errors with retries
+## 6. Handling ambiguous send failures safely
 
 ```python
-import time
-from briefklick import ServerError, InsufficientFundsError, AuthenticationError
+from briefklick import ServerError, TimeoutError_, InsufficientFundsError, AuthenticationError
 
-def send_with_retry(client, **kwargs):
-    for attempt in range(3):
-        try:
-            return client.send_letter(**kwargs)
-        except ServerError:
-            if attempt == 2:
-                raise
-            time.sleep(2 ** attempt)
-        except (AuthenticationError, InsufficientFundsError):
-            raise  # don't retry user/account errors
+try:
+    order = client.send_letter(...)
+except (ServerError, TimeoutError_):
+    # Do NOT blindly retry send_letter(): without idempotency keys this can
+    # create duplicate physical letters and duplicate charges.
+    # Reconcile manually first: check BriefKlick dashboard / support or verify
+    # whether the order appeared before sending again.
+    raise
+except (AuthenticationError, InsufficientFundsError):
+    raise  # user/account errors need intervention, not retries
 ```
 
 ## 7. International mail

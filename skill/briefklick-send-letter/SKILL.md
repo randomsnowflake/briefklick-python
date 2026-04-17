@@ -214,7 +214,8 @@ except ValidationError as e:
     # Address, file size, country code, etc. Inspect e.payload
     ...
 except (ServerError, TimeoutError_):
-    # Safe to retry with exponential backoff (2, 4, 8 s)
+    # Ambiguous for /send: do not blindly retry and risk duplicate mail.
+    # Reconcile first, then decide whether a second send is acceptable.
     ...
 ```
 
@@ -227,7 +228,7 @@ except (ServerError, TimeoutError_):
 | Reading the API key from `input()` or a string literal | Use `BriefKlickClient.from_env()`             |
 | Treating `Einschreiben.STANDARD` as Rückschein         | There is no Rückschein; state this clearly    |
 | Uploading PDF > 20 MB or > 90 pages                    | Pre-flight the file; client raises `ValueError` |
-| Re-sending after a `ServerError` without backoff       | Exponential backoff, cap at 3 attempts        |
+| Blindly retrying `send()` after `ServerError` / timeout | Treat it as ambiguous; reconcile before retry |
 | Parsing "Berlin" postal code as `10115` when user wrote `34533` | Keep the postal code the user provided, do not "correct" it |
 
 ## Worked example — full LLM loop

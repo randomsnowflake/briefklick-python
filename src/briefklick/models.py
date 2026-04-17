@@ -66,11 +66,11 @@ class Recipient:
         lines: list[str] = [self.name.strip()]
         if self.address_line2:
             lines.append(self.address_line2.strip())
-        lines.append(self.street.strip())
-        lines.append(f"{self.postal_code.strip()} {self.city.strip()}".strip())
         for extra in self.extra_lines:
             if extra and extra.strip():
                 lines.append(extra.strip())
+        lines.append(self.street.strip())
+        lines.append(f"{self.postal_code.strip()} {self.city.strip()}".strip())
         if self.country_code.upper() != "DE":
             # Append country in CAPS per Weltpostverein convention.
             lines.append(self.country_code.upper())
@@ -88,9 +88,12 @@ class Recipient:
             raise ValueError("Need at least a street line and a postal-code/city line.")
         # Assume the last line is "PLZ City"
         postal, _, city = parts[-1].partition(" ")
+        if not postal or not city.strip():
+            raise ValueError("Last line must contain both postal code and city.")
         street = parts[-2]
-        address_line2 = parts[0] if len(parts) >= 3 else None
-        extras = tuple(parts[1:-2]) if len(parts) > 3 else ()
+        prefix = parts[:-2]
+        address_line2 = prefix[0] if prefix else None
+        extras = tuple(prefix[1:])
         return cls(
             name=name,
             street=street,

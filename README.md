@@ -22,7 +22,8 @@ the post.
 - `preview_letter(...)` zero-risk helper (free, no balance needed, returns
   the exact rendered PDF)
 - `send_letter(...)` one-shot helper that chains `/create` + `/send`
-- 39 unit tests, no live API calls required
+- 45 unit tests, no live API calls required
+- PEP 561 marker included for type checkers (`py.typed`)
 
 ## Installation
 
@@ -153,13 +154,13 @@ except AuthenticationError:
 except ValidationError as e:
     ...  # malformed payload, file too big, unknown country, ...
 except ServerError:
-    ...  # 5xx — safe to retry with exponential backoff
+    ...  # for /send this is ambiguous: do not blindly retry and risk duplicate mail
 ```
 
 ## Testing
 
 ```bash
-.venv/bin/pytest                # 39 tests, 90% coverage, ~0.2s
+.venv/bin/pytest                # 45 tests, 89% coverage, ~0.2s
 .venv/bin/pytest --cov=briefklick
 ```
 
@@ -175,9 +176,9 @@ briefklick-python/
 │   ├── models.py            # Recipient, Document, Order, Status, enums
 │   ├── exceptions.py        # exception hierarchy
 │   └── __init__.py
-├── tests/                   # 37 tests, offline
+├── tests/                   # 45 tests, offline
 ├── docs/                    # extended examples and API reference
-├── skill/                   # SKILL.md for LLM-driven letter sending
+├── skill/                   # LLM-facing skill for letter preview/send
 ├── examples/                # runnable scripts
 ├── .env.example
 ├── pyproject.toml
@@ -188,7 +189,7 @@ briefklick-python/
 
 - [`docs/usage.md`](docs/usage.md) — extended examples, error handling recipes
 - [`docs/api_reference.md`](docs/api_reference.md) — full public API reference
-- [`skill/SKILL.md`](skill/SKILL.md) — LLM-facing skill for sending letters
+- [`skill/briefklick-send-letter/SKILL.md`](skill/briefklick-send-letter/SKILL.md) — LLM-facing skill for sending letters
   from natural language ("send a letter to Peter Maier in 34533 Berlin…").
 
 ## License

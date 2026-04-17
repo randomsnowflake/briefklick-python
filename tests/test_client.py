@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
 from datetime import datetime
 
 import pytest
@@ -47,6 +48,14 @@ def test_sets_apikey_header(client, mock_http, base_url) -> None:
 def test_get_balance_returns_int(client, mock_http, base_url) -> None:
     mock_http.get(f"{base_url}/balance", json={"balance": 12345})
     assert client.get_balance() == 12345
+
+
+def test_get_balance_rejects_malformed_success_payload(client, mock_http, base_url) -> None:
+    mock_http.get(f"{base_url}/balance", json=["oops"])
+    with pytest.raises(APIError) as info:
+        client.get_balance()
+    assert info.value.endpoint == "/balance"
+    assert "Unexpected /balance response" in str(info.value)
 
 
 # ---- GET /pricing, /countries ---------------------------------------------
@@ -131,6 +140,19 @@ def test_create_with_html(client, mock_http, base_url) -> None:
     assert "countrycode=DE" in body
 
 
+def test_create_debug_logging_redacts_sender_and_receiver(client, mock_http, base_url, caplog) -> None:
+    mock_http.post(f"{base_url}/create", json={"id": "qqq", "pages": 1})
+    caplog.set_level(logging.DEBUG, logger="briefklick")
+    client.create_document(
+        sender="Max Mustermann",
+        recipient=RECIPIENT,
+        html="<p>Hi</p>",
+    )
+    assert "Max Mustermann" not in caplog.text
+    assert "Peter Maier" not in caplog.text
+    assert "data_keys=['countrycode', 'emptypage', 'html', 'receiver', 'sender']" in caplog.text
+
+
 def test_create_requires_exactly_one_of_pdf_or_html(client) -> None:
     with pytest.raises(ValueError):
         client.create_document(sender="a", recipient=RECIPIENT)
@@ -192,6 +214,14 @@ def test_get_status_handles_missing_tracking(client, mock_http, base_url) -> Non
     assert s.status == OrderStatus.NEW
 
 
+def test_get_status_rejects_unknown_status_code(client, mock_http, base_url) -> None:
+    mock_http.post(f"{base_url}/status", json={"status": 99})
+    with pytest.raises(APIError) as info:
+        client.get_status(1)
+    assert info.value.endpoint == "/status"
+    assert "unknown status code 99" in str(info.value)
+
+
 # ---- POST /preview ---------------------------------------------------------
 
 
@@ -204,6 +234,14 @@ def test_preview_decodes_base64_pdf(client, mock_http, base_url) -> None:
     preview = client.preview("abc")
     assert preview.pdf_bytes == pdf
     assert preview.pages == 1
+
+
+def test_preview_rejects_invalid_base64_pdf(client, mock_http, base_url) -> None:
+    mock_http.post(f"{base_url}/preview", json={"file": "%%%not-base64%%%", "pages": 1})
+    with pytest.raises(APIError) as info:
+        client.preview("abc")
+    assert info.value.endpoint == "/preview"
+    assert "Unexpected /preview response" in str(info.value)
 
 
 # ---- high-level send_letter -----------------------------------------------
