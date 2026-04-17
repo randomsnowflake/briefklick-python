@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "briefklick"
+version = "0.1.0"
+description = "Python client for the BriefKlick v2 API (send physical letters in Germany programmatically)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Johannes Leimbach" }]
+keywords = ["briefklick", "letter", "api", "deutsche-post", "einschreiben", "germany"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Communications",
+    "Topic :: Office/Business",
+]
+dependencies = [
+    "requests>=2.31,<3",
+    "python-dotenv>=1.0,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "requests-mock>=1.11",
+    "pytest-cov>=4",
+]
+
+[project.urls]
+Homepage = "https://github.com/jleimbach/briefklick-python"
+Issues = "https://github.com/jleimbach/briefklick-python/issues"
+"API Docs" = "https://api.briefklick.de/v2/swagger.json"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["briefklick"]
+branch = true
