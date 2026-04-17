@@ -209,6 +209,44 @@ def test_preview_decodes_base64_pdf(client, mock_http, base_url) -> None:
 # ---- high-level send_letter -----------------------------------------------
 
 
+def test_preview_letter_calls_create_then_preview_and_never_send(client, mock_http, base_url) -> None:
+    pdf = b"%PDF-1.4 preview-only"
+    mock_http.post(f"{base_url}/create", json={"id": "doc-prev", "pages": 2})
+    mock_http.post(
+        f"{base_url}/preview",
+        json={"file": base64.b64encode(pdf).decode(), "pages": 2},
+    )
+    send_mock = mock_http.post(f"{base_url}/send", status_code=500)
+
+    doc, preview = client.preview_letter(
+        sender="Max Mustermann",
+        recipient=RECIPIENT,
+        html="<p>hi</p>",
+    )
+
+    assert doc.id == "doc-prev"
+    assert doc.pages == 2
+    assert preview.pages == 2
+    assert preview.pdf_bytes == pdf
+    assert send_mock.called is False, "preview_letter must not hit /send"
+
+    urls = [req.url for req in mock_http.request_history]
+    assert urls[0].endswith("/create")
+    assert urls[1].endswith("/preview")
+
+
+def test_preview_letter_requires_exactly_one_payload(client) -> None:
+    with pytest.raises(ValueError):
+        client.preview_letter(sender="s", recipient=RECIPIENT)
+    with pytest.raises(ValueError):
+        client.preview_letter(
+            sender="s",
+            recipient=RECIPIENT,
+            pdf_bytes=b"x",
+            html="y",
+        )
+
+
 def test_send_letter_chains_create_and_send(client, mock_http, base_url) -> None:
     mock_http.post(f"{base_url}/create", json={"id": "doc1", "pages": 1})
     mock_http.post(f"{base_url}/send", json={"id": 77, "price": 395})

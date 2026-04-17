@@ -354,6 +354,42 @@ class BriefKlickClient:
 
     # ----------------------------------------------------------- high-level API
 
+    def preview_letter(
+        self,
+        *,
+        sender: str,
+        recipient: Recipient | str,
+        pdf_path: str | os.PathLike[str] | None = None,
+        pdf_bytes: bytes | None = None,
+        html: str | None = None,
+        country_code: str | None = None,
+        empty_page: bool = False,
+    ) -> tuple[Document, Preview]:
+        """Create a document and return its preview — **never sends, never charges**.
+
+        This is the safest way to experiment with the API: both ``/create``
+        and ``/preview`` are free, so you can iterate on sender text,
+        recipient formatting, and letter content at zero cost. Returns
+        ``(document, preview)``; write ``preview.pdf_bytes`` to disk and
+        inspect it before any real ``send()`` call.
+
+        Provide exactly one of ``pdf_path``, ``pdf_bytes`` or ``html``.
+        """
+        provided = sum(p is not None for p in (pdf_path, pdf_bytes, html))
+        if provided != 1:
+            raise ValueError("Provide exactly one of pdf_path, pdf_bytes, or html.")
+
+        pdf_arg: Any = pdf_path if pdf_path is not None else pdf_bytes
+        document = self.create_document(
+            sender=sender,
+            recipient=recipient,
+            pdf=pdf_arg,
+            html=html,
+            country_code=country_code,
+            empty_page=empty_page,
+        )
+        return document, self.preview(document.id)
+
     def send_letter(
         self,
         *,

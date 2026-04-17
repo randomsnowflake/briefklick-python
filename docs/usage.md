@@ -3,6 +3,25 @@
 This document shows end-to-end recipes. For a per-method reference see
 [`api_reference.md`](api_reference.md).
 
+## 0. Preview only (free, no balance required)
+
+Lowest-risk way to interact with the API — `/create` and `/preview` are not
+chargeable, so this works even with an empty account.
+
+```python
+from pathlib import Path
+from briefklick import BriefKlickClient, Recipient
+
+with BriefKlickClient.from_env() as c:
+    doc, preview = c.preview_letter(
+        sender="Max Mustermann · Musterweg 1 · 10115 Berlin",
+        recipient=Recipient("Peter Maier", "Bergstraße 88", "34533", "Berlin"),
+        pdf_path="invoice.pdf",
+    )
+    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    print(f"Preview: {doc.pages} page(s). Nothing sent.")
+```
+
 ## 1. One-shot: send a PDF as Einschreiben
 
 ```python

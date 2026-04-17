@@ -5,9 +5,10 @@ BriefKlick lets you send physical letters in Germany (and a few more countries)
 from your code — you upload a PDF, they print, enclose, stamp, and drop it in
 the post.
 
-> ⚠️ **BriefKlick has no sandbox.** Every `send()` call is chargeable.
-> Use `create_document()` + `preview()` to inspect the rendered letter before
-> calling `send()`.
+> ⚠️ **BriefKlick has no sandbox for `send()`.** Every send call is chargeable.
+> But `/create` and `/preview` are **free** — `client.preview_letter(...)`
+> returns the exact PDF BriefKlick would dispatch, works with a zero-balance
+> account, and never spends money. Use it liberally to iterate on content.
 
 ## Features
 
@@ -18,8 +19,10 @@ the post.
   `ValidationError`, `ServerError`, `TimeoutError_`)
 - `.env` / environment-variable configuration
 - Production timeouts (connect 10 s, read 60 s) — configurable
+- `preview_letter(...)` zero-risk helper (free, no balance needed, returns
+  the exact rendered PDF)
 - `send_letter(...)` one-shot helper that chains `/create` + `/send`
-- 37 unit tests, no live API calls required
+- 39 unit tests, no live API calls required
 
 ## Installation
 
@@ -54,6 +57,29 @@ BRIEFKLICK_API_KEY=your_api_key_here
 Never commit `.env`. The repository's `.gitignore` already excludes it.
 
 ## Quickstart
+
+### 1. Preview (free, safe, recommended first step)
+
+```python
+from pathlib import Path
+from briefklick import BriefKlickClient, Recipient
+
+with BriefKlickClient.from_env() as client:
+    doc, preview = client.preview_letter(
+        sender="Max Mustermann · Musterweg 1 · 10115 Berlin",
+        recipient=Recipient(
+            name="Peter Maier",
+            street="Bergstraße 88",
+            postal_code="34533",
+            city="Berlin",
+        ),
+        pdf_path="invoice.pdf",
+    )
+    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    print(f"{doc.pages} page(s) rendered — nothing sent, nothing charged.")
+```
+
+### 2. Send
 
 ```python
 from briefklick import BriefKlickClient, Recipient, Einschreiben
@@ -133,7 +159,7 @@ except ServerError:
 ## Testing
 
 ```bash
-.venv/bin/pytest                # 37 tests, 90% coverage, ~0.2s
+.venv/bin/pytest                # 39 tests, 90% coverage, ~0.2s
 .venv/bin/pytest --cov=briefklick
 ```
 

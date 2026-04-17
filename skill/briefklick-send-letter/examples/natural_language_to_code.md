@@ -4,6 +4,33 @@ Use these as few-shot templates.
 
 ---
 
+## Prompt 0 — preview only (free, default when user is exploring)
+
+> Can you preview what a letter to Peter Maier in 34533 Berlin, Bergstraße 88
+> with my invoice.pdf would look like?
+
+```python
+from pathlib import Path
+from briefklick import BriefKlickClient, Recipient
+
+with BriefKlickClient.from_env() as c:
+    doc, preview = c.preview_letter(
+        sender=SENDER,
+        recipient=Recipient(
+            name="Peter Maier",
+            street="Bergstraße 88",
+            postal_code="34533",
+            city="Berlin",
+        ),
+        pdf_path="invoice.pdf",
+    )
+    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    # `/create` + `/preview` are not chargeable — safe to run any time.
+```
+
+Use this when the user says "preview", "show me", "dry run", "Vorschau",
+"test", "what would it look like", or has not explicitly asked to send.
+
 ## Prompt 1 — regular letter
 
 > Send a letter to Peter Maier in 34533 Berlin, Bergstraße 88 with attached

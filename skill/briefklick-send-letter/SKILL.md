@@ -1,18 +1,32 @@
 ---
 name: briefklick-send-letter
-description: Use when the user asks to send a physical letter in Germany (or to a German address) programmatically — phrasings include "send a letter to", "Brief schicken", "Einschreiben", "send this PDF as registered mail", or mentions attaching a PDF for postal delivery. Wraps the BriefKlick v2 API via the `briefklick` Python package.
+description: Use when the user asks to send OR preview a physical letter in Germany (or to a German address) programmatically — phrasings include "send a letter to", "Brief schicken", "Einschreiben", "send this PDF as registered mail", "preview what the letter would look like", or mentions attaching a PDF for postal delivery. Wraps the BriefKlick v2 API via the `briefklick` Python package.
 ---
 
 # briefklick-send-letter
 
-Send a real, physical letter via the [BriefKlick](https://www.briefklick.de/)
-service. BriefKlick prints, encloses, franks, and posts the PDF on behalf of
-the user.
+Send or preview a real, physical letter via the
+[BriefKlick](https://www.briefklick.de/) service. BriefKlick prints, encloses,
+franks, and posts the PDF on behalf of the user.
+
+## Two modes: preview vs. send
+
+| Mode       | Endpoints used            | Chargeable? | Needs account balance? |
+|------------|---------------------------|-------------|------------------------|
+| **Preview** | `/create` + `/preview`   | **No**      | **No**                 |
+| **Send**    | `/create` + `/send`      | **Yes**     | Yes                    |
+
+→ **Default to preview mode first.** It is free, works with a zero-balance
+account, and returns the exact PDF that BriefKlick would dispatch. Always
+offer it when the user is exploring, unsure, or has not explicitly said
+"send/versenden/abschicken".
 
 ## When to use
 
 - User asks to "send a letter", "Brief schicken", "verschicken per Post", or
   names a recipient + German address.
+- User asks to "preview", "show me what it would look like", "rendere",
+  "Vorschau", "dry-run", or "test" a letter.
 - User mentions "Einschreiben", "Einwurf", "Einschreiben mit Rückschein".
 - User wants to mail an attached PDF (invoice, Mahnung, Kündigung).
 - User asks for postal send status, tracking, balance, or price list.
@@ -20,21 +34,25 @@ the user.
 **Do NOT use** for:
 - Email or digital delivery — use a mail client instead.
 - Countries the BriefKlick `/countries` endpoint does not list.
-- Sandbox / test runs — the BriefKlick API has **no sandbox**, every send is
-  real and billed.
+- Actual sending without an account balance (preview still works fine).
+  The BriefKlick API has **no sandbox** for `send` — every send is real
+  and billed, but preview is safe.
 
 ## Core safety rules
 
 1. **Every `send()` call is chargeable.** Never call it speculatively.
-2. **Preview first when content is not trivially obvious** — call
-   `client.preview(doc.id)` and show the rendered PDF to the user before
-   `client.send(doc.id, ...)`.
-3. **Confirm with the user** before `send()` when:
+2. **Prefer `preview_letter()` over `send_letter()`.** Preview is free and
+   returns the same rendered PDF; use it as your default unless the user
+   has explicitly asked to send/dispatch/abschicken.
+3. **When sending, preview first.** Call `preview_letter()` (or
+   `create_document()` + `preview()`) and show the PDF to the user before
+   `send()`.
+4. **Confirm with the user** before `send()` when:
    - the recipient/address was inferred from an ambiguous message, or
    - the Einschreiben mode was inferred, or
    - the balance is low (`client.get_balance()` returns < 1000 cents).
-4. **Never hard-code the API key.** Rely on `.env` / `BRIEFKLICK_API_KEY`.
-5. "**Einschreiben mit Rückschein**" is **not supported** by the API.
+5. **Never hard-code the API key.** Rely on `.env` / `BRIEFKLICK_API_KEY`.
+6. "**Einschreiben mit Rückschein**" is **not supported** by the API.
    If the user asks for it, explain this and suggest `Einschreiben.STANDARD`
    (signature required) — or stop and ask.
 
@@ -82,6 +100,33 @@ pip install briefklick
 pip install -e path/to/briefklick-python
 ```
 
+### Preview only (zero-risk, recommended first step)
+
+Works even with a zero-balance account. Returns the **exact PDF** BriefKlick
+would dispatch — inspect it before any real send.
+
+```python
+from pathlib import Path
+from briefklick import BriefKlickClient, Recipient
+
+with BriefKlickClient.from_env() as client:
+    doc, preview = client.preview_letter(
+        sender="Max Mustermann · Musterweg 1 · 10115 Berlin",
+        recipient=Recipient(
+            name="Peter Maier",
+            street="Bergstraße 88",
+            postal_code="34533",
+            city="Berlin",
+        ),
+        pdf_path="invoice.pdf",   # or html=..., or pdf_bytes=...
+    )
+    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    print(f"Preview: {doc.pages} page(s). Not sent, not charged.")
+```
+
+Use this when the user says "preview", "show me", "what would this look like",
+or when you need to confirm details before the real send.
+
 ### Minimal send (one call)
 
 ```python
@@ -102,9 +147,11 @@ with BriefKlickClient.from_env() as client:
     print(f"Sent! Order #{order.id}, charged {order.price_eur:.2f} €")
 ```
 
-### Safer: preview → confirm → send
+### Safer: preview → confirm → send (reuses the same document id)
 
 Use this when the letter content is generated or the request is ambiguous.
+This avoids a second `/create` round-trip by reusing `doc.id` from the
+preview step.
 
 ```python
 from pathlib import Path
@@ -118,13 +165,13 @@ with BriefKlickClient.from_env() as client:
         city="Berlin",
     )
 
-    doc = client.create_document(
+    doc, preview = client.preview_letter(
         sender="Max Mustermann · Musterweg 1 · 10115 Berlin",
         recipient=recipient,
-        pdf=Path("invoice.pdf"),
+        pdf_path="invoice.pdf",
     )
+    Path("preview.pdf").write_bytes(preview.pdf_bytes)
 
-    Path("preview.pdf").write_bytes(client.preview(doc.id).pdf_bytes)
     # show preview.pdf to user, wait for explicit confirmation
     order = client.send(doc.id, einschreiben=Einschreiben.STANDARD)
     print("Order:", order.id, "Price €:", order.price_eur)
@@ -175,7 +222,8 @@ except (ServerError, TimeoutError_):
 
 | Mistake                                                | Fix                                           |
 |--------------------------------------------------------|-----------------------------------------------|
-| Calling `send()` without user confirmation             | Use `preview()` + confirm prompt              |
+| Calling `send_letter()` when user only asked to "test" | Use `preview_letter()` — free, no balance     |
+| Calling `send()` without user confirmation             | Use `preview_letter()` + confirm prompt       |
 | Reading the API key from `input()` or a string literal | Use `BriefKlickClient.from_env()`             |
 | Treating `Einschreiben.STANDARD` as Rückschein         | There is no Rückschein; state this clearly    |
 | Uploading PDF > 20 MB or > 90 pages                    | Pre-flight the file; client raises `ValueError` |

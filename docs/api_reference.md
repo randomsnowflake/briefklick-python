@@ -44,7 +44,8 @@ Raises `ConfigurationError` if the API key is missing.
 | `preview(document_id) -> Preview`                                        | `POST /preview`  |
 | `send(document_id, *, einschreiben=NORMAL, color=BW) -> Order`           | `POST /send`     |
 | `get_status(order_id) -> Status`                                         | `POST /status`   |
-| `send_letter(*, sender, recipient, pdf_path | pdf_bytes | html, einschreiben=NORMAL, color=BW, country_code=None, empty_page=False) -> Order` | `/create` + `/send` |
+| `preview_letter(*, sender, recipient, pdf_path \| pdf_bytes \| html, country_code=None, empty_page=False) -> (Document, Preview)` | `/create` + `/preview` (free) |
+| `send_letter(*, sender, recipient, pdf_path \| pdf_bytes \| html, einschreiben=NORMAL, color=BW, country_code=None, empty_page=False) -> Order` | `/create` + `/send` |
 
 Also supports context-manager usage (`with BriefKlickClient(...) as c:`).
 
