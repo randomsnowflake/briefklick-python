@@ -84,6 +84,9 @@ class Recipient:
     def from_lines(cls, name: str, lines: Iterable[str], country_code: str = "DE") -> "Recipient":
         """Construct a Recipient by passing raw address lines (for edge cases)."""
         parts = [line.strip() for line in lines if line and line.strip()]
+        normalized_country = country_code.upper()
+        if normalized_country != "DE" and parts and parts[-1].upper() == normalized_country:
+            parts = parts[:-1]
         if len(parts) < 2:
             raise ValueError("Need at least a street line and a postal-code/city line.")
         # Assume the last line is "PLZ City"
@@ -99,7 +102,7 @@ class Recipient:
             street=street,
             postal_code=postal,
             city=city,
-            country_code=country_code,
+            country_code=normalized_country,
             address_line2=address_line2,
             extra_lines=extras,
         )

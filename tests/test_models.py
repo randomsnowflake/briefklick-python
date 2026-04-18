@@ -79,6 +79,22 @@ def test_recipient_from_lines_preserves_multiple_prefix_lines() -> None:
     ]
 
 
+def test_recipient_from_lines_roundtrips_international_addresses() -> None:
+    original = Recipient(
+        name="Acme AG",
+        street="Musterweg 1",
+        postal_code="1010",
+        city="Wien",
+        country_code="AT",
+    )
+    reconstructed = Recipient.from_lines(
+        original.name,
+        original.format().splitlines()[1:],
+        country_code="AT",
+    )
+    assert reconstructed == original
+
+
 def test_recipient_from_lines_requires_postal_code_and_city() -> None:
     with pytest.raises(ValueError):
         Recipient.from_lines("Acme AG", ["Musterweg 1", "Berlin"])
