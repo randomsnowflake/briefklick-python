@@ -91,7 +91,9 @@ class Recipient:
             raise ValueError("Need at least a street line and a postal-code/city line.")
         # Assume the last line is "PLZ City"
         postal, _, city = parts[-1].partition(" ")
-        if not postal or not city.strip():
+        postal = postal.strip()
+        city = city.strip()
+        if not postal or not city:
             raise ValueError("Last line must contain both postal code and city.")
         street = parts[-2]
         prefix = parts[:-2]

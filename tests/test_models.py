@@ -98,3 +98,15 @@ def test_recipient_from_lines_roundtrips_international_addresses() -> None:
 def test_recipient_from_lines_requires_postal_code_and_city() -> None:
     with pytest.raises(ValueError):
         Recipient.from_lines("Acme AG", ["Musterweg 1", "Berlin"])
+
+
+def test_recipient_from_lines_strips_extra_whitespace_around_city() -> None:
+    """Multiple spaces between PLZ and city must not bleed into city/postal."""
+    r = Recipient.from_lines(
+        "Peter Maier",
+        ["Bergstraße 88", "34533   Berlin"],
+    )
+    assert r.postal_code == "34533"
+    assert r.city == "Berlin"
+    # And formatting should round-trip cleanly without extra whitespace.
+    assert r.format().splitlines()[-1] == "34533 Berlin"
