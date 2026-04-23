@@ -32,6 +32,11 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import IO, Any
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:  # pragma: no cover - Python <3.9 fallback, not supported
+    ZoneInfo = None  # type: ignore[assignment]
+
 import requests
 from dotenv import load_dotenv
 
@@ -63,6 +68,10 @@ DEFAULT_BASE_URL = "https://api.briefklick.de/v2"
 DEFAULT_TIMEOUT: tuple[float, float] = (10.0, 60.0)  # (connect, read)
 MAX_PDF_BYTES = 20 * 1024 * 1024  # 20 MB per API docs
 MAX_PAGES = 90
+# BriefKlick returns `/status.created` as a naive "YYYY-MM-DD HH:MM:SS" string
+# in German local time. We attach Europe/Berlin so downstream arithmetic is
+# correct. Falls back to UTC if tzdata is unavailable.
+_BRIEFKLICK_TZ = ZoneInfo("Europe/Berlin") if ZoneInfo is not None else None
 try:
     PACKAGE_VERSION = version("briefklick")
 except PackageNotFoundError:
@@ -215,7 +224,14 @@ class BriefKlickClient:
                 payload=payload,
                 endpoint=endpoint,
             )
-        if status == 402 or "insufficient" in str(message).lower() or "guthaben" in str(message).lower():
+        # Only classify 4xx responses as "insufficient funds". A 5xx whose
+        # error string happens to contain "insufficient" (e.g. "insufficient
+        # replicas") is a server problem, not a balance problem.
+        lower_message = str(message).lower()
+        if status == 402 or (
+            400 <= status < 500
+            and ("insufficient" in lower_message or "guthaben" in lower_message)
+        ):
             raise InsufficientFundsError(
                 f"Insufficient account balance: {message}",
                 status_code=status,
@@ -287,7 +303,10 @@ class BriefKlickClient:
         ``pdf`` may be a path (``str``/``Path``), raw ``bytes``, or any
         readable binary file-like object.
         """
-        if bool(pdf) == bool(html):
+        # Use ``is not None`` rather than truthiness so that a caller passing
+        # an empty ``bytes`` / empty ``html`` argument gets a clear validation
+        # error from downstream checks instead of a misleading "provide one".
+        if (pdf is not None) == (html is not None):
             raise ValueError("Provide exactly one of pdf= or html=.")
 
         receiver = recipient.format() if isinstance(recipient, Recipient) else str(recipient)
@@ -412,6 +431,11 @@ class BriefKlickClient:
                 created_dt = datetime.strptime(str(created_raw), "%Y-%m-%d %H:%M:%S")
             except ValueError:
                 created_dt = None
+            else:
+                # BriefKlick emits naive local time; attach the correct tz so
+                # callers get an aware datetime suitable for comparisons.
+                if _BRIEFKLICK_TZ is not None:
+                    created_dt = created_dt.replace(tzinfo=_BRIEFKLICK_TZ)
         tracking = data.get("tracking") or None
         return Status(
             status=OrderStatus(raw_status),

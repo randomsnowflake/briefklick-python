@@ -4,6 +4,7 @@ import base64
 import io
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pytest
 import requests
@@ -202,7 +203,8 @@ def test_get_status_parses_tracking_and_date(client, mock_http, base_url) -> Non
     status = client.get_status(55)
     assert status.status == OrderStatus.SENT
     assert status.tracking == "RR 123 456 789 DE"
-    assert status.created == datetime(2025, 2, 1, 8, 30, 0)
+    assert status.created == datetime(2025, 2, 1, 8, 30, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+    assert status.created is not None and status.created.tzinfo is not None
     assert status.is_sent is True
 
 
@@ -352,6 +354,24 @@ def test_insufficient_funds_detected_in_body(client, mock_http, base_url) -> Non
     )
     with pytest.raises(InsufficientFundsError):
         client.send("abc")
+
+
+def test_server_error_with_insufficient_in_message_is_not_insufficient_funds(
+    client, mock_http, base_url
+) -> None:
+    """5xx errors must never be classified as InsufficientFundsError.
+
+    Regression: the heuristic used to fire on any status code, so e.g. a
+    503 whose body mentions "insufficient replicas" wrongly looked like a
+    balance problem to the caller.
+    """
+    mock_http.get(
+        f"{base_url}/balance",
+        status_code=503,
+        json={"error": "insufficient replicas"},
+    )
+    with pytest.raises(ServerError):
+        client.get_balance()
 
 
 def test_timeout_raises_timeout_error(client, mock_http, base_url) -> None:
