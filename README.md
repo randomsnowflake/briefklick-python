@@ -1,5 +1,8 @@
 # briefklick-python
 
+[![CI](https://github.com/randomsnowflake/briefklick-python/actions/workflows/ci.yml/badge.svg)](https://github.com/randomsnowflake/briefklick-python/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Idiomatic Python client for the [BriefKlick v2 API](https://api.briefklick.de/v2/swagger.json).
 BriefKlick lets you send physical letters in Germany (and a few more countries)
 from your code — you upload a PDF, they print, enclose, stamp, and drop it in
@@ -22,7 +25,7 @@ the post.
 - `preview_letter(...)` zero-risk helper (free, no balance needed, returns
   the exact rendered PDF)
 - `send_letter(...)` one-shot helper that chains `/create` + `/send`
-- 45 unit tests, no live API calls required
+- 48 unit tests, no live API calls required
 - PEP 561 marker included for type checkers (`py.typed`)
 
 ## Installation
@@ -33,6 +36,16 @@ source .venv/bin/activate
 pip install -e ".[dev]"          # during development
 # or, once published:
 # pip install briefklick
+```
+
+For one-off agent/Hermes usage without mutating the system Python:
+
+```bash
+# after publication
+uv run --with briefklick python your_script.py
+
+# from a local source checkout before publication
+uv run --with /path/to/briefklick-python python your_script.py
 ```
 
 Supported Python: 3.9+. Only runtime deps are `requests` and `python-dotenv`.
@@ -160,7 +173,7 @@ except ServerError:
 ## Testing
 
 ```bash
-.venv/bin/pytest                # 45 tests, 89% coverage, ~0.2s
+.venv/bin/pytest                # offline tests, no BriefKlick API key required
 .venv/bin/pytest --cov=briefklick
 ```
 
@@ -176,11 +189,15 @@ briefklick-python/
 │   ├── models.py            # Recipient, Document, Order, Status, enums
 │   ├── exceptions.py        # exception hierarchy
 │   └── __init__.py
-├── tests/                   # 45 tests, offline
-├── docs/                    # extended examples and API reference
+├── tests/                   # offline tests
+├── docs/                    # usage, API reference, publication checklist
 ├── skill/                   # LLM-facing skill for letter preview/send
 ├── examples/                # runnable scripts
+├── .github/workflows/ci.yml # offline test CI
 ├── .env.example
+├── CONTRIBUTING.md
+├── SECURITY.md
+├── CHANGELOG.md
 ├── pyproject.toml
 └── README.md
 ```
@@ -189,6 +206,10 @@ briefklick-python/
 
 - [`docs/usage.md`](docs/usage.md) — extended examples, error handling recipes
 - [`docs/api_reference.md`](docs/api_reference.md) — full public API reference
+- [`docs/publication.md`](docs/publication.md) — public repository readiness checklist
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — development setup and PR checklist
+- [`SECURITY.md`](SECURITY.md) — vulnerability reporting and API-key handling
+- [`CHANGELOG.md`](CHANGELOG.md) — release notes
 - [`skill/briefklick-send-letter/SKILL.md`](skill/briefklick-send-letter/SKILL.md) — LLM-facing skill for sending letters
   from natural language ("send a letter to Peter Maier in 34533 Berlin…").
 

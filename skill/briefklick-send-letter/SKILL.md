@@ -92,12 +92,18 @@ Keep the user's exact spelling (umlauts, ß) — the PDF will render it.
 
 ### Dependencies
 
-The host project is expected to have `briefklick` installed. If not:
+The host project is expected to have `briefklick` installed. If not, avoid
+system-wide `pip` on managed Python installs; use a project venv or `uv`.
 
 ```bash
-pip install briefklick
-# or, from the source repo:
-pip install -e path/to/briefklick-python
+# In a project virtualenv
+python -m pip install briefklick
+
+# One-off Hermes/agent execution after package publication
+uv run --with briefklick python your_script.py
+
+# From a source checkout before publication
+uv run --with /path/to/briefklick-python python your_script.py
 ```
 
 ### Preview only (zero-risk, recommended first step)
@@ -249,4 +255,4 @@ Skill response:
 6. Return `order.id`, `order.price_eur`, and any tracking from
    `get_status(order.id)` (polled after a short delay).
 
-See `examples/natural_language_to_code.md` for the full prompt → code mapping.
+See `references/natural_language_to_code.md` for the full prompt → code mapping.
