@@ -196,12 +196,28 @@ except (ServerError, TimeoutError_):
     raise
 ```
 
-## Tests
+## Entwicklung und Tests
+
+Die Tests benötigen die optionale Dev-Abhängigkeit `requests-mock`. Installiere
+das Paket deshalb im Entwicklungsmodus mit dem `dev`-Extra, bevor du `pytest`
+ausführst:
 
 ```bash
-.venv/bin/pytest
-.venv/bin/pytest --cov=briefklick
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+python -m pytest -q
 ```
+
+Optional mit Coverage:
+
+```bash
+python -m pytest --cov=briefklick
+```
+
+Ein nacktes `python -m pytest` in einer Umgebung ohne `.[dev]` schlägt fehl,
+weil `requests-mock` nur für Tests gebraucht wird und nicht zu den
+Laufzeit-Abhängigkeiten gehört.
 
 Alle Tests laufen offline. `requests-mock` fängt sämtliche HTTP-Aufrufe ab, ein
 API-Key ist für die Tests nicht nötig.
