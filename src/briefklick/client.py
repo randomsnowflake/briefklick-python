@@ -27,15 +27,11 @@ import base64
 import logging
 import os
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import IO, Any
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover - Python <3.9 fallback, not supported
-    ZoneInfo = None  # type: ignore[assignment]
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import requests
 from dotenv import load_dotenv
@@ -71,7 +67,10 @@ MAX_PAGES = 90
 # BriefKlick returns `/status.created` as a naive "YYYY-MM-DD HH:MM:SS" string
 # in German local time. We attach Europe/Berlin so downstream arithmetic is
 # correct. Falls back to UTC if tzdata is unavailable.
-_BRIEFKLICK_TZ = ZoneInfo("Europe/Berlin") if ZoneInfo is not None else None
+try:
+    _BRIEFKLICK_TZ = ZoneInfo("Europe/Berlin")
+except ZoneInfoNotFoundError:  # pragma: no cover - depends on host tzdata
+    _BRIEFKLICK_TZ = timezone.utc
 try:
     PACKAGE_VERSION = version("briefklick")
 except PackageNotFoundError:
@@ -434,8 +433,7 @@ class BriefKlickClient:
             else:
                 # BriefKlick emits naive local time; attach the correct tz so
                 # callers get an aware datetime suitable for comparisons.
-                if _BRIEFKLICK_TZ is not None:
-                    created_dt = created_dt.replace(tzinfo=_BRIEFKLICK_TZ)
+                created_dt = created_dt.replace(tzinfo=_BRIEFKLICK_TZ)
         tracking = data.get("tracking") or None
         return Status(
             status=OrderStatus(raw_status),

@@ -7,7 +7,7 @@ name = "briefklick"
 version = "0.1.0"
 description = "Python client for the BriefKlick v2 API (send physical letters in Germany programmatically)."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [{ name = "Johannes Leimbach" }]
 keywords = ["briefklick", "letter", "api", "deutsche-post", "einschreiben", "germany"]
@@ -16,7 +16,6 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

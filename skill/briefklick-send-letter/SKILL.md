@@ -126,7 +126,7 @@ with BriefKlickClient.from_env() as client:
         ),
         pdf_path="invoice.pdf",   # or html=..., or pdf_bytes=...
     )
-    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    preview.save("preview.pdf")
     print(f"Preview: {doc.pages} page(s). Not sent, not charged.")
 ```
 
@@ -176,7 +176,7 @@ with BriefKlickClient.from_env() as client:
         recipient=recipient,
         pdf_path="invoice.pdf",
     )
-    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    preview.save("preview.pdf")
 
     # show preview.pdf to user, wait for explicit confirmation
     order = client.send(doc.id, einschreiben=Einschreiben.STANDARD)

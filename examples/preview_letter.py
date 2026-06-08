@@ -41,7 +41,7 @@ def main(pdf_path: str | None) -> int:
 
         doc, preview = client.preview_letter(**kwargs)
         out = Path("preview.pdf")
-        out.write_bytes(preview.pdf_bytes)
+        preview.save(out)
         print(
             f"✅ Preview ready: {out} ({len(preview.pdf_bytes)} bytes, "
             f"{preview.pages} page(s), doc={doc.id})"

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
+from pathlib import Path
 from typing import Iterable
 
 
@@ -154,3 +156,10 @@ class Preview:
 
     pdf_bytes: bytes
     pages: int
+
+    def save(self, path: str | os.PathLike[str]) -> Path:
+        """Write the preview PDF to ``path`` and return the resulting path."""
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(self.pdf_bytes)
+        return target

@@ -32,7 +32,7 @@ def main(pdf_path: str) -> int:
         )
         print(f"Created document {doc.id} ({doc.pages} page(s))")
 
-        Path("preview.pdf").write_bytes(client.preview(doc.id).pdf_bytes)
+        client.preview(doc.id).save("preview.pdf")
         print("Wrote preview.pdf — inspect before sending.")
 
         confirm = input(f"Send {doc.pages}-page letter to {recipient.name}? [y/N] ")

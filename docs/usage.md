@@ -9,7 +9,6 @@ Lowest-risk way to interact with the API — `/create` and `/preview` are not
 chargeable, so this works even with an empty account.
 
 ```python
-from pathlib import Path
 from briefklick import BriefKlickClient, Recipient
 
 with BriefKlickClient.from_env() as c:
@@ -18,7 +17,7 @@ with BriefKlickClient.from_env() as c:
         recipient=Recipient("Peter Maier", "Bergstraße 88", "34533", "Berlin"),
         pdf_path="invoice.pdf",
     )
-    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    preview.save("preview.pdf")
     print(f"Preview: {doc.pages} page(s). Nothing sent.")
 ```
 
@@ -56,7 +55,7 @@ with BriefKlickClient.from_env() as c:
         recipient=Recipient("Peter Maier", "Bergstraße 88", "34533", "Berlin"),
         pdf=Path("invoice.pdf"),
     )
-    Path("preview.pdf").write_bytes(c.preview(doc.id).pdf_bytes)
+    c.preview(doc.id).save("preview.pdf")
 
     input(f"Review preview.pdf ({doc.pages} pages). Enter to send, Ctrl-C to abort…")
     order = c.send(doc.id, einschreiben=Einschreiben.STANDARD)

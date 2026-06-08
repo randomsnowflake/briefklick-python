@@ -94,8 +94,10 @@ Result of `/status`.
 
 ### `Preview(pdf_bytes: bytes, pages: int)`
 
-Result of `/preview`. `pdf_bytes` is already base64-decoded — write straight
-to disk.
+Result of `/preview`. `pdf_bytes` is already base64-decoded.
+
+- `.save(path) -> pathlib.Path` — creates parent directories, writes the PDF,
+  and returns the path.
 
 ## Enums
 

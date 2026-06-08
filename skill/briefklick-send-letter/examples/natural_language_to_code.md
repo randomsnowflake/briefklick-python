@@ -24,7 +24,7 @@ with BriefKlickClient.from_env() as c:
         ),
         pdf_path="invoice.pdf",
     )
-    Path("preview.pdf").write_bytes(preview.pdf_bytes)
+    preview.save("preview.pdf")
     # `/create` + `/preview` are not chargeable — safe to run any time.
 ```
 
@@ -90,7 +90,7 @@ doc = c.create_document(
     pdf=Path("letter.pdf"),
 )
 
-Path("preview.pdf").write_bytes(c.preview(doc.id).pdf_bytes)
+c.preview(doc.id).save("preview.pdf")
 # -> show preview.pdf, obtain explicit user confirmation
 order = c.send(doc.id, einschreiben=Einschreiben.STANDARD)
 ```

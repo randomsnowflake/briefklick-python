@@ -1,6 +1,8 @@
+from pathlib import Path
+
 import pytest
 
-from briefklick import Recipient
+from briefklick import Preview, Recipient
 
 
 def test_recipient_formats_standard_german_address() -> None:
@@ -110,3 +112,12 @@ def test_recipient_from_lines_strips_extra_whitespace_around_city() -> None:
     assert r.city == "Berlin"
     # And formatting should round-trip cleanly without extra whitespace.
     assert r.format().splitlines()[-1] == "34533 Berlin"
+
+
+def test_preview_save_writes_pdf_and_creates_parent_dirs(tmp_path: Path) -> None:
+    preview = Preview(pdf_bytes=b"%PDF-1.4 preview", pages=1)
+
+    output = preview.save(tmp_path / "nested" / "preview.pdf")
+
+    assert output == tmp_path / "nested" / "preview.pdf"
+    assert output.read_bytes() == b"%PDF-1.4 preview"
