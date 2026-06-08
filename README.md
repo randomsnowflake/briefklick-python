@@ -5,6 +5,12 @@ BriefKlick lets you send physical letters in Germany (and a few more countries)
 from your code — you upload a PDF, they print, enclose, stamp, and drop it in
 the post.
 
+> ℹ️ **Not affiliated with BriefKlick.** This is a free, independent, open-source
+> client library. It is **not** an official product of, endorsed by, or affiliated
+> with BriefKlick or its operating company. "BriefKlick" is used only to describe
+> the third-party API this library talks to. All trademarks belong to their
+> respective owners.
+
 > ⚠️ **BriefKlick has no sandbox for `send()`.** Every send call is chargeable.
 > But `/create` and `/preview` are **free** — `client.preview_letter(...)`
 > returns the exact PDF BriefKlick would dispatch, works with a zero-balance
@@ -31,8 +37,6 @@ the post.
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"          # during development
-# or, once published:
-# pip install briefklick
 ```
 
 Supported Python: 3.9+. Only runtime deps are `requests` and `python-dotenv`.
