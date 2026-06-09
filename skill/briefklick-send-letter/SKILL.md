@@ -1,6 +1,9 @@
 ---
 name: briefklick-send-letter
 description: Use when the user asks to send OR preview a physical letter in Germany (or to a German address) programmatically — phrasings include "send a letter to", "Brief schicken", "Einschreiben", "send this PDF as registered mail", "preview what the letter would look like", or mentions attaching a PDF for postal delivery. Wraps the BriefKlick v2 API via the `briefklick` Python package.
+version: 1.0.0
+author: Hermes Agent
+license: MIT
 ---
 
 # briefklick-send-letter
